@@ -1,0 +1,7 @@
+{
+  "name": "Face-Off Boxing: AI Arena",
+  "description": "A high-intensity 2-player boxing game where you can upload custom faces for the fighters. Featuring Gemini-powered match commentary and dynamic combat mechanics.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
