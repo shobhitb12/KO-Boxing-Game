@@ -7,10 +7,11 @@ import { PlayerConfig, Particle } from '../types';
 interface BoxingGameProps {
   p1Config: PlayerConfig;
   p2Config: PlayerConfig;
+  isMuted: boolean;
   onGameOver: (winner: string) => void;
 }
 
-const BoxingGame: React.FC<BoxingGameProps> = ({ p1Config, p2Config, onGameOver }) => {
+const BoxingGame: React.FC<BoxingGameProps> = ({ p1Config, p2Config, isMuted, onGameOver }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [p1HP, setP1HP] = useState(100);
   const [p2HP, setP2HP] = useState(100);
@@ -25,33 +26,36 @@ const BoxingGame: React.FC<BoxingGameProps> = ({ p1Config, p2Config, onGameOver 
   const sounds = useRef<{ [key: string]: HTMLAudioElement }>({});
 
   useEffect(() => {
-    // Initialize Sounds
-    sounds.current = {
-      punch: new Audio('https://www.soundjay.com/misc/sounds/punch-01.mp3'),
-      kick: new Audio('https://www.soundjay.com/misc/sounds/kick-01.mp3'),
-      hit_light: new Audio('https://www.soundjay.com/misc/sounds/slap-01.mp3'),
-      hit_heavy: new Audio('https://www.soundjay.com/misc/sounds/punch-02.mp3'),
-      jump: new Audio('https://www.soundjay.com/button/sounds/button-16.mp3'),
-      ko: new Audio('https://www.soundjay.com/misc/sounds/bell-ringing-01.mp3'),
+    // Initialize Sounds with interaction-friendly loading
+    const createAudio = (url: string, vol: number = 0.4) => {
+      const audio = new Audio(url);
+      audio.volume = vol;
+      audio.preload = 'auto';
+      return audio;
     };
 
-    (Object.values(sounds.current) as HTMLAudioElement[]).forEach(s => {
-      s.volume = 0.4;
-      s.load();
-    });
-    sounds.current.ko.volume = 0.6;
+    sounds.current = {
+      punch: createAudio('https://www.soundjay.com/misc/sounds/punch-01.mp3'),
+      kick: createAudio('https://www.soundjay.com/misc/sounds/kick-01.mp3'),
+      hit_light: createAudio('https://www.soundjay.com/misc/sounds/slap-01.mp3'),
+      hit_heavy: createAudio('https://www.soundjay.com/misc/sounds/punch-02.mp3'),
+      jump: createAudio('https://www.soundjay.com/button/sounds/button-16.mp3'),
+      ko: createAudio('https://www.soundjay.com/misc/sounds/bell-ringing-01.mp3', 0.6),
+    };
 
     const playSound = (name: string, pitchShift: boolean = false) => {
+      if (isMuted) return;
+      
       const s = sounds.current[name];
       if (s) {
+        // Clone for overlapping sounds if needed, or just reset
         s.currentTime = 0;
         if (pitchShift) {
-            // Randomize pitch slightly
             s.playbackRate = 0.8 + Math.random() * 0.4;
         } else {
             s.playbackRate = 1.0;
         }
-        s.play().catch(() => {});
+        s.play().catch(e => console.warn("Audio playback blocked or failed:", e));
       }
     };
 
@@ -221,7 +225,7 @@ const BoxingGame: React.FC<BoxingGameProps> = ({ p1Config, p2Config, onGameOver 
         if (p2.state === 'KO' && p2.stateTimer === 0) {
           isGameOverTriggered.current = true;
           playSound('ko');
-          setTimeout(() => onGameOver(p1.config.name), 1000);
+          setTimeout(() => onGameOver(p1Config.name), 1000);
           return;
         }
       }
@@ -241,8 +245,14 @@ const BoxingGame: React.FC<BoxingGameProps> = ({ p1Config, p2Config, onGameOver 
       cancelAnimationFrame(animationId);
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
+      // Clean up audio objects
+      // Fix: cast to HTMLAudioElement[] to avoid unknown property errors
+      (Object.values(sounds.current) as HTMLAudioElement[]).forEach(s => {
+        s.pause();
+        s.src = '';
+      });
     };
-  }, [p1Config, p2Config, onGameOver]);
+  }, [p1Config, p2Config, onGameOver, isMuted]);
 
   return (
     <div className="relative flex flex-col items-center">

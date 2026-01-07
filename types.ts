@@ -1,5 +1,5 @@
 
-export type GameState = 'MENU' | 'PLAYING' | 'GAMEOVER';
+export type GameState = 'MENU' | 'PLAYING' | 'GAMEOVER' | 'PRACTICE';
 
 export interface PlayerConfig {
   name: string;
